@@ -34,7 +34,7 @@ Thumbs.db
 """
     with open(".gitignore", "w") as file:
         file.write(content)
-    print("📄 Arquivo .gitignore criado.")
+    print("Arquivo .gitignore criado.")
 
 
 def run_command(command):
@@ -55,7 +55,7 @@ DB_PORT='*'
 """
     with open(".env", "w") as file:
         file.write(content)
-    print("📄 Arquivo .env criado.")
+    print("Arquivo .env criado.")
 
 
 def modify_settings(project_name):
@@ -70,20 +70,12 @@ def modify_settings(project_name):
         "'django.contrib.staticfiles',",
         "'django.contrib.staticfiles',\n    'app',"
         )
-        # content = content.replace(
-        #     "INSTALLED_APPS = [",
-        #     "INSTALLED_APPS = [\n    'app',"
-        # )
     if 'app' in content and "'csp'" not in content:
         print('csp')
         content = content.replace(
         "'app',",
         "'app',\n    'csp',"
         )
-        # content = content.replace(
-        #     "INSTALLED_APPS = [",
-        #     "INSTALLED_APPS = [\n    'csp',"
-        # )
     
     if 'django.middleware.security.SecurityMiddleware' in content and 'CSPMiddleware' not in content:
         content = content.replace(
@@ -97,31 +89,50 @@ def modify_settings(project_name):
         content += """
 
 CONTENT_SECURITY_POLICY = {
-    "EXCLUDE_URL_PREFIXES": ["/excluded-path/"],
+    "EXCLUDE_URL_PREFIXES": ["/admin/"],
     "DIRECTIVES": {
         "default-src": ['self', "cdn.example.net", "'unsafe-inline'"],
         "frame-ancestors": ['self'],
         "form-action": ['self'],
+        "img-src": ['self', 'data:'],
         "report-uri": "/csp-report/",
     },
 }
 """
 
-    # Importa dotenv e os
-    # imports = "import os\nfrom dotenv import load_dotenv\nload_dotenv()\n"
+    content = content.replace(
+        "LANGUAGE_CODE = 'en-us'",
+        "LANGUAGE_CODE = 'pt-BR'"
+    )
+
+    content = content.replace(
+        "TIME_ZONE = 'UTC'",
+        "TIME_ZONE = 'America/Sao_Paulo'"
+    )
+
     content = content.replace(
         "from pathlib import Path",
         "from pathlib import Path \nimport os\nfrom dotenv import load_dotenv\n\nload_dotenv()\n"
     )
-    # content = imports + content
 
-    # Substitui DEBUG
+    content = content.replace(
+        "'DIRS': [],",
+        """'DIRS': [
+            BASE_DIR / 'base',
+        ],"""
+    )
+
+    content = content.replace(
+        "STATIC_URL = '/static/'",
+        "STATIC_URL = '/static/teste'"
+    )
+
     content = content.replace("DEBUG = True", "DEBUG = os.getenv('DEBUG', 'False') == 'True'")
 
-    # Substitui ALLOWED_HOSTS
+
     content = content.replace("ALLOWED_HOSTS = []", "ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '').split(',')")
 
-    # Substitui DATABASES
+
     db_block = """
 USE_SQLITE = os.getenv('USE_SQLITE', 'True') == 'True'
 
@@ -144,7 +155,7 @@ else:
         }
     }
 """
-    # Remove bloco antigo de DATABASES
+
     content = content.replace(
         "DATABASES = {\n    'default': {\n        'ENGINE': 'django.db.backends.sqlite3',\n        'NAME': BASE_DIR / 'db.sqlite3',\n    }\n}",
         db_block.strip()
@@ -176,7 +187,6 @@ def main():
     print("Criando projeto Django...")
     run_command(f"{django_admin} startproject {project_name} .")
 
-    # Cria o app 'app'
     manage_py = "manage.py"
     python_exec = os.path.join("venv", "Scripts" if os.name == "nt" else "bin", "python")
     print("Criando app 'app'...")
