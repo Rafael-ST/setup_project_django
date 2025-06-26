@@ -42,6 +42,38 @@ def run_command(command):
     subprocess.run(command, shell=True, check=True)
 
 
+def create_custom_cors():
+    os.chdir('app')
+    content = """import os
+
+
+class CustomCorsMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+        # One-time configuration and initialization.
+
+    def __call__(self, request):
+        # Code to be executed for each request before
+        # the view (and later middleware) are called.
+        response = self.get_response(request)
+        response["Access-Control-Allow-Headers"] = "Authorization, Access-Control-Request-Method, Access-Control-Request-Headers, Origin, user_key, Accept, Content-Type"
+        # '''response["Access-Control-Allow-Headers"] = "Authorization, Access-Control-Request-Method, Access-Control-Request-Headers, Origin, user_key, Accept, Content-Type"'''
+
+        response["Access-Control-Allow-Origin"] = os.getenv('ALLOWED_ORIGIN')
+
+        response["Access-Control-Allow-Methods"] = "GET, HEAD, POST, PUT, DELETE, PATCH, TRACE, CONNECT, OPTIONS"
+
+        # Code to be executed for each request/response after
+        # the view is called.
+
+        return response
+        """
+    with open("custom_cors_middleware.py", "w") as file:
+        file.write(content)
+    print("Arquivo custom_cors_middleware.py criado")
+
+    
+
 def create_env_file():
     content = """USE_SQLITE=True
 DEBUG=True
@@ -52,6 +84,7 @@ DB_USER='*'
 DB_PASSWORD='*'
 DB_HOST='*'
 DB_PORT='*'
+ALLOWED_ORIGIN='*'
 """
     with open(".env", "w") as file:
         file.write(content)
@@ -81,6 +114,12 @@ def modify_settings(project_name):
         content = content.replace(
             "'django.middleware.security.SecurityMiddleware',",
             "'django.middleware.security.SecurityMiddleware',\n    'csp.middleware.CSPMiddleware',"
+        )
+    
+    if 'MIDDLEWARE = [' in content:
+        content = content.replace(
+            "MIDDLEWARE = [",
+            "MIDDLEWARE = [\n    'app.custom_cors_middleware.CustomCorsMiddleware',"
         )
     
 
@@ -123,8 +162,21 @@ CONTENT_SECURITY_POLICY = {
     )
 
     content = content.replace(
-        "STATIC_URL = '/static/'",
-        "STATIC_URL = '/static/teste'"
+        "STATIC_URL = 'static/'",
+        """STATIC_URL = '/static/'
+
+STATICFILES_DIRS = [
+    BASE_DIR / "base_static",
+]
+
+# STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+STATIC_ROOT = BASE_DIR / "static"
+
+
+MEDIA_URL = 'media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+"""
+        
     )
 
     content = content.replace("DEBUG = True", "DEBUG = os.getenv('DEBUG', 'False') == 'True'")
@@ -163,6 +215,7 @@ else:
 
     with open(settings_path, "w") as file:
         file.write(content)
+        
 
     print("settings.py atualizado com variáveis do .env")
 
@@ -184,6 +237,9 @@ def main():
     print("Instalando pacotes...")
     run_command(f"{pip_path} install django python-dotenv psycopg2-binary gunicorn whitenoise django-csp")
 
+    print("Criando requirements.txt...")
+    run_command(f"{pip_path} freeze > requirements.txt")
+
     print("Criando projeto Django...")
     run_command(f"{django_admin} startproject {project_name} .")
 
@@ -197,6 +253,7 @@ def main():
 
     create_gitignore()
     create_env_file()
+    create_custom_cors()
 
 
 if __name__ == "__main__":
